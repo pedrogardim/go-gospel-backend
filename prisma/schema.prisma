@@ -1,0 +1,216 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+    provider     = "prisma-client"
+    output       = "../generated/prisma"
+    moduleFormat = "cjs"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+enum UserType {
+    VOLUNTEER
+    ORGANIZATION
+    SUPER_ADMIN
+}
+
+enum Gender {
+    MALE
+    FEMALE
+}
+
+enum OpportunityPeriod {
+    MORNING
+    AFTERNOON
+    EVENING
+}
+
+enum ApplicationStatus {
+    PENDING
+    APPROVED
+    DENIED
+}
+
+model User {
+    id               String        @id @default(uuid()) @db.Uuid
+    email            String        @unique
+    userType         UserType      @default(VOLUNTEER)
+    lastLoginAt      DateTime?     @default(now())
+    volunteer        Volunteer?
+    organization     Organization?
+    sentMessages     Message[]     @relation("MessageSender")
+    receivedMessages Message[]     @relation("MessageReceiver")
+    createdAt        DateTime      @default(now())
+    updatedAt        DateTime      @updatedAt
+}
+
+model Volunteer {
+    id                     String                  @id @default(uuid()) @db.Uuid
+    userId                 String                  @unique @db.Uuid
+    user                   User                    @relation(fields: [userId], references: [id])
+    fullName               String
+    birthDate              DateTime
+    gender                 Gender
+    phone                  String
+    city                   String
+    state                  String
+    country                String
+    bio                    String?
+    isVerified             Boolean                 @default(false)
+    isActive               Boolean                 @default(true)
+    profilePictureUrl      String?
+    createdAt              DateTime                @default(now())
+    updatedAt              DateTime                @updatedAt
+    volunteerSkillMappings VolunteerSkillMapping[]
+    applications           Application[]
+}
+
+model Skill {
+    id                       String                    @id @default(uuid()) @db.Uuid
+    code                     String                    @unique
+    color                    String
+    iconUrl                  String?
+    createdAt                DateTime                  @default(now())
+    updatedAt                DateTime                  @updatedAt
+    volunteerSkillMappings   VolunteerSkillMapping[]
+    opportunitySkillMappings OpportunitySkillMapping[]
+}
+
+model VolunteerSkillMapping {
+    id          String    @id @default(uuid()) @db.Uuid
+    volunteerId String    @db.Uuid
+    volunteer   Volunteer @relation(fields: [volunteerId], references: [id])
+    skillId     String    @db.Uuid
+    skill       Skill     @relation(fields: [skillId], references: [id])
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+}
+
+model Organization {
+    id     String @id @default(uuid()) @db.Uuid
+    userId String @unique @db.Uuid
+    user   User   @relation(fields: [userId], references: [id])
+
+    name        String
+    description String?
+    websiteUrl  String?
+    logoUrl     String?
+    address     String?
+
+    latitude  Float?
+    longitude Float?
+    location  Unsupported("geography")?
+
+    isVerified Boolean @default(false)
+    isActive   Boolean @default(true)
+
+    createdAt                DateTime                  @default(now())
+    updatedAt                DateTime                  @updatedAt
+    organizationAreaMappings OrganizationAreaMapping[]
+    opportunities            Opportunity[]
+}
+
+model OrganizationArea {
+    id                       String                    @id @default(uuid()) @db.Uuid
+    code                     String                    @unique
+    icon                     String
+    color                    String
+    category                 String
+    createdAt                DateTime                  @default(now())
+    updatedAt                DateTime                  @updatedAt
+    organizationAreaMappings OrganizationAreaMapping[]
+}
+
+model OrganizationAreaMapping {
+    id                 String           @id @default(uuid()) @db.Uuid
+    organizationAreaId String           @db.Uuid
+    organizationArea   OrganizationArea @relation(fields: [organizationAreaId], references: [id])
+    organizationId     String           @db.Uuid
+    organization       Organization     @relation(fields: [organizationId], references: [id])
+    createdAt          DateTime         @default(now())
+    updatedAt          DateTime         @updatedAt
+}
+
+model Opportunity {
+    id             String       @id @default(uuid()) @db.Uuid
+    organizationId String       @db.Uuid
+    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    title          String
+    description    String
+    address        String?
+
+    latitude  Float?
+    longitude Float?
+    location  Unsupported("geography")?
+
+    startDate                DateTime?                 @db.Date
+    period                   OpportunityPeriod?
+    endDate                  DateTime?                 @db.Date
+    duration                 BigInt?
+    vacancies                Int?
+    imagesUrls               String[]                  @default([])
+    country                  String?
+    isApproved               Boolean                   @default(false)
+    isActive                 Boolean                   @default(true)
+    contactName              String?
+    contactEmail             String?
+    contactPhone             String?
+    createdAt                DateTime                  @default(now())
+    updatedAt                DateTime                  @updatedAt
+    applications             Application[]
+    opportunitySkillMappings OpportunitySkillMapping[]
+}
+
+model OpportunitySkillMapping {
+    id            String      @id @default(uuid()) @db.Uuid
+    opportunityId String      @db.Uuid
+    opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
+    skillId       String      @db.Uuid
+    skill         Skill       @relation(fields: [skillId], references: [id])
+    createdAt     DateTime    @default(now())
+    updatedAt     DateTime    @updatedAt
+}
+
+model Application {
+    id                 String            @id @default(uuid()) @db.Uuid
+    volunteerId        String            @db.Uuid
+    volunteer          Volunteer         @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+    opportunityId      String            @db.Uuid
+    opportunity        Opportunity       @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+    status             ApplicationStatus @default(PENDING)
+    applicationMessage String?
+    appliedAt          DateTime          @default(now())
+    updatedAt          DateTime          @updatedAt
+    messages           Message[]
+
+    @@unique([volunteerId, opportunityId])
+}
+
+model Message {
+    id            String       @id @default(uuid()) @db.Uuid
+    senderId      String       @db.Uuid
+    sender        User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+    receiverId    String       @db.Uuid
+    receiver      User         @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+    applicationId String?      @db.Uuid
+    application   Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+    content       String
+    sentAt        DateTime     @default(now())
+    readAt        DateTime?
+}
+
+model AuthCode {
+    id        String   @id @default(uuid()) @db.Uuid
+    email     String
+    code      String
+    expiresAt DateTime
+    used      Boolean  @default(false)
+    createdAt DateTime @default(now())
+
+    @@index([email, code])
+}
