@@ -1,0 +1,6 @@
+{
+  "otp": {
+    "subject": "Tu código de verificación de Go&Gospel",
+    "text": "Tu código de verificación es {code}. Expira en 5 minutos.\n\nSi no solicitaste este código, puedes ignorar este email."
+  }
+}
