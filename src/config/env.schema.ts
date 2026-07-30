@@ -7,6 +7,16 @@ export const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
 
   DATABASE_URL: z.url(),
+
+  REDIS_HOST: z.string(),
+  REDIS_PORT: z.coerce.number(),
+  REDIS_PASSWORD: z.string().optional(),
+
+  RESEND_API_KEY: z.string(),
+  RESEND_FROM: z.string(),
+
+  JWT_SECRET: z.string(),
+  JWT_EXPIRES_IN: z.coerce.number(),
 });
 
 export type Env = z.infer<typeof envSchema>;
