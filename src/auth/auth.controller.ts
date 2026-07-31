@@ -1,8 +1,9 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { I18nLang } from 'nestjs-i18n';
 import { AuthService } from './auth.service';
 import { SendOtpDto } from './dto/send-otp.dto';
-import { I18nLang } from 'nestjs-i18n';
 import { AuthWithOtpDto } from './dto/auth-with-otp.dto';
+import { RefreshDto } from './dto/refresh.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -18,5 +19,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   authWithOtp(@Body() authWithOtpDto: AuthWithOtpDto) {
     return this.authService.authWithOtp(authWithOtpDto);
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  refresh(@Body() refreshDto: RefreshDto) {
+    return this.authService.refresh(refreshDto);
   }
 }

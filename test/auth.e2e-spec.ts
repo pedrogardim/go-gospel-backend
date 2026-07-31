@@ -122,4 +122,48 @@ describe('AuthController (e2e)', () => {
         .expect(400);
     });
   });
+
+  describe('POST /auth/refresh', () => {
+    it('returns 200 for valid refresh token and user', async () => {
+      const user = await prisma.user.create({
+        data: { email: 'user@example.com' },
+      });
+
+      await redis.set('refresh:123', user.id);
+      const { body } = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: '123' })
+        .expect(200);
+
+      expect(body).toMatchObject({
+        accessToken: expect.any(String),
+        refreshToken: expect.any(String),
+      });
+
+      const oldRefreshToken = await redis.get('refresh:123');
+      expect(oldRefreshToken).toBeNull();
+    });
+
+    it('returns 401 when refresh token is invalid', async () => {
+      return request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: '123' })
+        .expect(401);
+    });
+
+    it('returns 401 when user does not exist', async () => {
+      await redis.set('refresh:123', '00000000-0000-0000-0000-000000000000');
+      return request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: '123' })
+        .expect(401);
+    });
+
+    it('returns 400 when refreshToken is invalid', async () => {
+      return request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({})
+        .expect(400);
+    });
+  });
 });

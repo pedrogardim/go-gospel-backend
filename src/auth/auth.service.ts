@@ -1,4 +1,4 @@
-import { randomInt } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
@@ -8,6 +8,8 @@ import { UsersService } from '../users/users.service';
 
 import { SendOtpDto } from './dto/send-otp.dto';
 import { AuthWithOtpDto } from './dto/auth-with-otp.dto';
+import { RefreshDto } from './dto/refresh.dto';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -17,21 +19,6 @@ export class AuthService {
     private readonly redisService: RedisService,
     private readonly jwtService: JwtService,
   ) {}
-
-  async signIn(email: string) {
-    let user = await this.usersService.findByEmail(email);
-    let isNewUser = false;
-
-    if (!user) {
-      user = await this.usersService.create({ email });
-      isNewUser = true;
-    } else {
-      await this.usersService.updateLastLogin(user.id);
-    }
-
-    const token = this.jwtService.sign({ id: user.id, email });
-    return { accessToken: token, user, isNewUser };
-  }
 
   async sendOtp({ email }: SendOtpDto, lang: string) {
     const normalizedEmail = email.toLowerCase().trim();
@@ -52,6 +39,49 @@ export class AuthService {
     }
     await this.redisService.delete(`otp:${normalizedEmail}`);
 
-    return await this.signIn(normalizedEmail);
+    return await this.signInByEmail(normalizedEmail);
+  }
+
+  async refresh({ refreshToken }: RefreshDto) {
+    const userId = await this.redisService.get(`refresh:${refreshToken}`);
+    if (!userId) throw new UnauthorizedException('Invalid refresh token');
+
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new UnauthorizedException();
+
+    await this.redisService.delete(`refresh:${refreshToken}`);
+    return await this.issueTokens(user);
+  }
+
+  async signInByEmail(email: string) {
+    let user = await this.usersService.findByEmail(email);
+    let isNewUser = false;
+
+    if (!user) {
+      user = await this.usersService.create({ email });
+      isNewUser = true;
+    } else {
+      await this.usersService.updateLastLogin(user.id);
+    }
+
+    const tokens = await this.issueTokens(user);
+    return { ...tokens, user, isNewUser };
+  }
+
+  async issueTokens(user: User) {
+    const accessToken = await this.jwtService.signAsync(
+      { sub: user.id, email: user.email, userType: user.userType },
+      { expiresIn: '15m' },
+    );
+
+    const refreshToken = randomBytes(32).toString('hex');
+
+    await this.redisService.set(
+      `refresh:${refreshToken}`,
+      user.id,
+      60 * 60 * 24 * 7,
+    );
+
+    return { accessToken, refreshToken };
   }
 }

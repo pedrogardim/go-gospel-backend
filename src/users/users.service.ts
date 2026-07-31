@@ -8,11 +8,15 @@ import { User } from '@prisma/client';
 export class UsersService {
   constructor(private readonly usersRepository: UsersRepository) {}
 
-  async findByEmail(email: string): Promise<User | null> {
+  findById(id: string): Promise<User | null> {
+    return this.usersRepository.findById(id);
+  }
+
+  findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findByEmail(email);
   }
 
-  async updateLastLogin(id: string): Promise<User> {
+  updateLastLogin(id: string): Promise<User> {
     return this.usersRepository.update(id, { lastLoginAt: new Date() });
   }
 

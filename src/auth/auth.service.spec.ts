@@ -39,45 +39,6 @@ describe('AuthService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('signIn', () => {
-    it('should create a new user if user is NOT found in database', async () => {
-      // 1. Arrange
-      const user = createMock<User>({
-        id: 'user-id',
-        email: 'user@example.com',
-      });
-      usersService.findByEmail.mockResolvedValue(null);
-      usersService.create.mockResolvedValue(user);
-      jwtService.sign.mockReturnValue('access-token');
-
-      // 2. Act
-      const response = await service.signIn('user@example.com');
-
-      // 3. Assert
-      expect(response.accessToken).toBe('access-token');
-      expect(response.user).toEqual(user);
-      expect(response.isNewUser).toEqual(true);
-
-      expect(usersService.create).toHaveBeenCalled();
-      expect(usersService.updateLastLogin).not.toHaveBeenCalled();
-    });
-
-    it('should update last login if user ALREADY exists', async () => {
-      // 1. Arrange
-      usersService.findByEmail.mockResolvedValue(
-        createMock<User>({ id: 'user-id' }),
-      );
-
-      // 2. Act
-      const response = await service.signIn('user@example.com');
-      expect(response.isNewUser).toEqual(false);
-
-      // 3. Assert
-      expect(usersService.updateLastLogin).toHaveBeenCalled();
-      expect(usersService.create).not.toHaveBeenCalled();
-    });
-  });
-
   describe('sendOtp', () => {
     it('should normalize email, store 6-digit OTP in Redis with 300s TTL, and send email', async () => {
       // 1. Arrange
@@ -118,11 +79,11 @@ describe('AuthService', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should delete OTP from Redis and complete signIn if OTP is valid', async () => {
+    it('should delete OTP from Redis and complete signInByEmail if OTP is valid', async () => {
       // 1. Arrange
       redisService.get.mockResolvedValue('123456');
 
-      const spy = jest.spyOn(service, 'signIn');
+      const spy = jest.spyOn(service, 'signInByEmail');
 
       // 2. Act
       await service.authWithOtp({
@@ -133,6 +94,123 @@ describe('AuthService', () => {
       // 3. Assert
       expect(redisService.delete).toHaveBeenCalledWith('otp:user@example.com');
       expect(spy).toHaveBeenCalledWith('user@example.com');
+    });
+  });
+
+  describe('refresh', () => {
+    it('should issue tokens if user exists and refresh token is valid', async () => {
+      // 1. Arrange
+      const refreshToken = '123';
+
+      const user = createMock<User>({
+        id: 'user-id',
+        email: 'user@example.com',
+      });
+
+      usersService.findById.mockResolvedValue(user);
+      redisService.get.mockResolvedValue(user.id);
+      jwtService.signAsync.mockResolvedValue('access-token');
+
+      // 2. Act
+      const response = await service.refresh({ refreshToken });
+
+      // 3. Assert
+      expect(response.accessToken).toBe('access-token');
+      expect(response.refreshToken).toBeDefined();
+
+      expect(redisService.delete).toHaveBeenCalledWith(
+        `refresh:${refreshToken}`,
+      );
+    });
+
+    it('should throw UnauthorizedException if token is invalid', async () => {
+      // 1. Arrange
+      redisService.get.mockResolvedValue(null);
+
+      // 2. Act
+      // 3. Assert
+      await expect(
+        service.refresh({
+          refreshToken: '123',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw UnauthorizedException if user does not exist', async () => {
+      // 1. Arrange
+      redisService.get.mockResolvedValue('user-id');
+      usersService.findById.mockResolvedValue(null);
+
+      // 2. Act
+      // 3. Assert
+      await expect(service.refresh({ refreshToken: '123' })).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+  });
+
+  describe('signInByEmail', () => {
+    it('should create a new user if user is NOT found in database', async () => {
+      // 1. Arrange
+      const user = createMock<User>({
+        id: 'user-id',
+        email: 'user@example.com',
+      });
+      usersService.findByEmail.mockResolvedValue(null);
+      usersService.create.mockResolvedValue(user);
+      jwtService.signAsync.mockResolvedValue('access-token');
+
+      // 2. Act
+      const response = await service.signInByEmail('user@example.com');
+
+      // 3. Assert
+      expect(response.accessToken).toBe('access-token');
+      expect(response.refreshToken).toBeDefined();
+      expect(response.user).toEqual(user);
+      expect(response.isNewUser).toEqual(true);
+
+      expect(usersService.create).toHaveBeenCalled();
+      expect(usersService.updateLastLogin).not.toHaveBeenCalled();
+    });
+
+    it('should update last login if user ALREADY exists', async () => {
+      // 1. Arrange
+      usersService.findByEmail.mockResolvedValue(
+        createMock<User>({ id: 'user-id' }),
+      );
+
+      // 2. Act
+      const response = await service.signInByEmail('user@example.com');
+      expect(response.isNewUser).toEqual(false);
+
+      // 3. Assert
+      expect(usersService.updateLastLogin).toHaveBeenCalled();
+      expect(usersService.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('issueTokens', () => {
+    it('should issue access and refresh token, and store it on redis', async () => {
+      // 1. Arrange
+      jwtService.signAsync.mockResolvedValue('access-token');
+
+      const user = createMock<User>({
+        id: 'user-id',
+        email: 'user@example.com',
+      });
+
+      // 2. Act
+      const response = await service.issueTokens(user);
+
+      // 3. Assert
+      expect(response.accessToken).toBe('access-token');
+      expect(response.refreshToken).toBeDefined();
+
+      expect(redisService.set).toHaveBeenCalledWith(
+        `refresh:${response.refreshToken}`,
+        user.id,
+        60 * 60 * 24 * 7,
+      );
     });
   });
 });
