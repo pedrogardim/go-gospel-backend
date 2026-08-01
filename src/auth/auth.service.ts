@@ -69,10 +69,11 @@ export class AuthService {
   }
 
   async issueTokens(user: User) {
-    const accessToken = await this.jwtService.signAsync(
-      { sub: user.id, email: user.email, userType: user.userType },
-      { expiresIn: '15m' },
-    );
+    const accessToken = await this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+      userType: user.userType,
+    });
 
     const refreshToken = randomBytes(32).toString('hex');
 
