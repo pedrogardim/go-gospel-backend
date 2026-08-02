@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 
 import { Public } from '../decorators/public.decorator';
+import { UserContext } from '../decorators/current-user.decorator';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -36,7 +37,7 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync(token);
-      request['user'] = payload;
+      request['user'] = payload as UserContext;
     } catch {
       throw new UnauthorizedException();
     }

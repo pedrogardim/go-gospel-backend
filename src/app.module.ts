@@ -11,6 +11,7 @@ import { EmailModule } from './infrastructure/email/email.module';
 import { RedisModule } from './infrastructure/database/redis/redis.module';
 import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from './users/users.module';
+import { VolunteersModule } from './volunteers/volunteers.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -40,6 +41,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     RedisModule,
     UsersModule,
+    VolunteersModule,
   ],
   controllers: [AppController],
 })

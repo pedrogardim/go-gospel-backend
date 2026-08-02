@@ -10,6 +10,7 @@ import { SendOtpDto } from './dto/send-otp.dto';
 import { AuthWithOtpDto } from './dto/auth-with-otp.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { User } from '@prisma/client';
+import { UserContext } from './decorators/current-user.decorator';
 
 @Injectable()
 export class AuthService {
@@ -73,7 +74,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       userType: user.userType,
-    });
+    } as UserContext);
 
     const refreshToken = randomBytes(32).toString('hex');
 
