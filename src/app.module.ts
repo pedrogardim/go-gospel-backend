@@ -12,6 +12,7 @@ import { RedisModule } from './infrastructure/database/redis/redis.module';
 import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from './users/users.module';
 import { VolunteersModule } from './volunteers/volunteers.module';
+import { OrganizationsModule } from './organizations/organizations.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -42,6 +43,7 @@ import { VolunteersModule } from './volunteers/volunteers.module';
     RedisModule,
     UsersModule,
     VolunteersModule,
+    OrganizationsModule,
   ],
   controllers: [AppController],
 })
