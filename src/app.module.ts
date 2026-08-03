@@ -13,6 +13,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from './users/users.module';
 import { VolunteersModule } from './volunteers/volunteers.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { SkillsModule } from './skills/skills.module';
+import { OrganizationAreasModule } from './organization-areas/organization-areas.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -44,6 +46,8 @@ import { OrganizationsModule } from './organizations/organizations.module';
     UsersModule,
     VolunteersModule,
     OrganizationsModule,
+    SkillsModule,
+    OrganizationAreasModule,
   ],
   controllers: [AppController],
 })
